@@ -15,39 +15,44 @@ final class ItineraryGenerator {
     
     init(landmark: Landmark) {
         self.landmark = landmark
+        
         let pointOfInterestTool = FindPointsOfInterestTool(landmark: landmark)
         let instructions = Instructions {
             "Your job is to create an itinerary for the user."
-            "For each day, you must suggest one hotel and one restaurant."
-            "Always use the 'findPointsOfInterest' tool to find hotels and restaurant in \(landmark.name)"
+            "Each day needs an activity, hotel and restaurant."
+            """
+            Always use the findPointsOfInterest tool to find businesses
+            and activities in \(landmark.name), especially hotels and restaurants.
+            
+            The point of interest categories may include hotel and restaurant.
+            """
+            landmark.description
         }
         
-        self.session = LanguageModelSession(tools: [pointOfInterestTool], instructions: instructions)
+        self.session = LanguageModelSession(tools: [pointOfInterestTool],
+                                            instructions: instructions)
+
     }
-    
+
     func generateItinerary(dayCount: Int = 3) async {
-        // MARK: - [CODE-ALONG] Chapter 6.2.1: Update to exclude schema from prompt
         do {
             let prompt = Prompt {
                 "Generate a \(dayCount)-day itinerary to \(landmark.name)."
-                "Give it a fun title and description."
                 "Here is an example of the desired format, but don't copy its content:"
                 Itinerary.exampleTripToJapan
             }
-            let stream = session.streamResponse(
-                to: prompt,
-                generating: Itinerary.self,
-                includeSchemaInPrompt: false
-                //options: GenerationOptions(sampling: .greedy))
+            let stream = session.streamResponse(to: prompt,
+                                                generating: Itinerary.self,
+                                                includeSchemaInPrompt: false)
             for try await partialResponse in stream {
                 self.itinerary = partialResponse.content
             }
-            
+
         } catch {
             self.error = error
         }
     }
-    
+
     func prewarmModel() {
         session.prewarm()
     }
